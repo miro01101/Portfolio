@@ -97,32 +97,36 @@ This section of code performs pivot operations on the **df_mthly** DataFrame and
 - The weights for each ETF are calculated by dividing the individual inverse standard deviation values by the **'Sum_InvStdVal'** for the corresponding month. The resulting weights are stored in columns **'*W_EEM'**, **'W_GLD'**, **'W_SPY'**, **'W_TLT'**, and **'W_VGK'**.
 
 
-
-
-
-
+## Weight Summation Check
 
 ```python 
-
+df_mthly_pivot['W_CHECK_SUM'] = df_mthly_pivot['W_EEM'] + df_mthly_pivot['W_GLD'] + df_mthly_pivot['W_SPY'] + df_mthly_pivot['W_TLT'] + df_mthly_pivot['W_VGK']
 ```
 
+This line of code calculates the sum of the weights for each ETF in **df_mthly_pivot** and stores the result in a new column **'W_CHECK_SUM'**.
+
+This code segment allows for the creation of a pivot table from the **df_mthly** DataFrame and calculates the weights for each ETF based on their inverse standard deviation values. Additionally, it performs a check by summing the weights to ensure they add up to 1.
 
 
-
-
-
-
-
-
-
-
-
+## DataFrame Unpivoting and Filtering
 
 ```python 
-
+df_mthly_unpivot = df_mthly_pivot.stack(level=(0)).reset_index()
+df_mthly_unpivot = df_mthly_unpivot[df_mthly_unpivot["Title"].isin(["W_EEM", "W_GLD", 'W_SPY', 'W_TLT', 'W_VGK'])].copy()
+df_mthly_unpivot.columns.values[-1] = "W"
+df_mthly_unpivot['Title'] = df_mthly_unpivot['Title'].str.replace('W_', '')
 ```
 
+This section of code performs the unpivoting operation on the df_mthly_pivot DataFrame and applies some additional data filtering and column transformations.
 
+- The **stack()** function is called on **df_mthly_pivot** with **level=(0)**. This operation reshapes the DataFrame by stacking the columns, resulting in a multi-level index. The stacking is performed on the first level, which corresponds to the combination of **'Year'** and **'Month'**. The resulting DataFrame is stored in **df_mthly_unpivot**.
+- The **reset_index()** function is then called on df_mthly_unpivot to convert the multi-level index into separate columns.
+- The DataFrame **df_mthly_unpivot** is further filtered to include only rows where the **"Title"** column has values matching **'W_EEM'**, **'W_GLD'**, **'W_SPY'**, **'W_TLT'**, or **'W_VGK'**. The **.isin()** function is used to perform this filtering.
+- The **.copy()** function is called to create a copy of the filtered DataFrame, ensuring that subsequent modifications are performed on the new DataFrame.
+- The last column name in **df_mthly_unpivot** is changed to **'W'** using the **columns.values** attribute.
+- The values in the **'Title'** column of **df_mthly_unpivot** are transformed by removing the prefix **'W_'** using the **str.replace()** function.
+
+This code segment transforms the **df_mthly_pivot** DataFrame into a more structured format by unpivoting it. It then filters the data to include only the specified ETFs and performs column name modifications. The resulting DataFrame, **df_mthly_unpivot**, provides a more concise representation of the ETF weights.
 
 
 
