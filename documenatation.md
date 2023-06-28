@@ -325,31 +325,108 @@ The loop iterates through the rows of the DataFrame and updates the position val
 
 
 ```python 
-
+sns.lineplot(data=new_df_comp.loc[(new_df_comp['Date'].dt.year >= 2018) & (new_df_comp['Date'].dt.month >= 5)], x="Date", y="SUM_all_pos_value")
+plt.xlabel("Date")
+plt.ylabel("Value")
+plt.title("Portfolio value over time")
+plt.savefig('PortfolioValue.png')
 ```
 
+This code generates a plot of the portfolio value over time, specifically after the first rebalancing, using the Seaborn library.
 
+Plotting the Portfolio Value:
+
+The code uses the lineplot function from the Seaborn library (**sns.lineplot**) to create a line plot.
+The data for the plot is obtained from the DataFrame new_df_comp by filtering rows based on specific conditions. Only rows where the year is greater than or equal to 2018 and the month is greater than or equal to 5 are selected.
+The x-axis of the plot is set to the **"Date"** column, and the y-axis represents the **"SUM_all_pos_value"** column, which denotes the portfolio value.
+The xlabel function is used to set the label for the x-axis as **"Date"**, and the ylabel function sets the label for the y-axis as **"Value"**.
+If desired, the title function can be uncommented and used to set the title of the plot as **"Portfolio value over time"**.
+Finally, the savefig function is used to save the plot as an image file named **"PortfolioValue.png"**.
+The code generates a line plot illustrating the portfolio value over time, specifically after the first rebalancing, using the specified data range. The resulting plot provides insights into the performance of the portfolio.
 
 
 ```python 
+year_first = 2020
+first_date = df[df.index.year == year_first].index[0]
 
+year_last = 2022
+last_date = df[df.index.year == year_last].index[-1]
+
+CAGR = (new_df_comp.loc[(new_df_comp['Date'] == last_date)]['SUM_all_pos_value'].values[0] / new_df_comp.loc[(new_df_comp['Date'] == first_date)]['SUM_all_pos_value'].values[0]) ** (1/3) - 1
+
+print('Portfolio had a CAGR of {:.2%} '.format(CAGR))
 ```
 
+This code calculates the Compound Annual Growth Rate (CAGR) for a portfolio based on the data in the DataFrame **'new_df_comp'** and prints the result.
 
+Setting the First and Last Year:
+
+The variable **'year_first'** is set to 2020, representing the desired first year for calculating the CAGR.
+The variable **'year_last'** is set to 2022, representing the desired last year for calculating the CAGR.
+Finding the First and Last Dates:
+
+The code filters the DataFrame **'df'** to select only rows where the year matches the **'year_first'** value.
+The index of the first matching row is extracted using **'.index[0]'** to obtain the first date in the DataFrame for the specified year.
+Similarly, the code filters **'df'** to select rows where the year matches the **'year_last'** value.
+The index of the last matching row is extracted using **'.index[-1]'** to obtain the last date in the DataFrame for the specified year.
+
+Calculating the CAGR:
+
+The CAGR is calculated using the formula: CAGR = (Ending Value / Beginning Value)^(1/Number of Years) - 1.
+The **'SUM_all_pos_value'** value for the last date is obtained by filtering **'new_df_comp'** based on the **'Date'** column matching the **'last_date'** value.
+The **'SUM_all_pos_value'** value for the first date is obtained in a similar manner using the **'first_date'** value.
+The CAGR is calculated by dividing the value for the last date by the value for the first date, raising it to the power of 1/3 (as we are considering a 3-year period), and then subtracting 1.
+
+Printing the CAGR:
+
+The calculated CAGR is printed as a percentage with two decimal places using the **'print'** function and the formatted string **'Portfolio had a CAGR of {:.2%} '**.
+The code calculates the CAGR for the specified portfolio over the specified period and displays it as a percentage.
 
 
 ```python 
+mask = (new_df_comp['Date'] >= first_date) & (new_df_comp['Date'] <= last_date)
 
+SR = new_df_comp.loc[mask].SUM_all_pos_value.pct_change(1).mean() / new_df_comp.loc[mask].SUM_all_pos_value.pct_change(1).std()
+print ('Portfolio had a Sharpe ratio of {:.2f} '.format(SR))
+
+A_SR = len(new_df_comp)**(1/2)*SR
+print ('Portfolio had a annualized Sharpe ratio of {:.2f} '.format(A_SR))
 ```
 
+This code calculates the Sharpe ratio for a portfolio based on the data in the DataFrame **'new_df_comp'** and prints the result, both the standard Sharpe ratio and the annualized Sharpe ratio.
 
+Creating a Boolean Mask:
+
+A boolean mask named **'mask'** is created to filter the rows in **'new_df_comp'** based on the condition that the **'Date'** column should be between **'first_date'** and **'last_date'**.
+
+Calculating the Sharpe Ratio:
+
+The Sharpe ratio is calculated as the ratio of the mean returns to the standard deviation of returns.
+The code calculates the mean returns by calling the **'pct_change(1)'** method on the **'SUM_all_pos_value'** column of **'new_df_comp'** for the rows that satisfy the **'mask'** condition, and then computes the mean using the **'mean()'** function.
+Similarly, the standard deviation of returns is calculated by calling **'pct_change(1)'** on the **'SUM_all_pos_value'** column of **'new_df_comp'** for the filtered rows, followed by the **'std()'** function.
+The Sharpe ratio is obtained by dividing the mean returns by the standard deviation.
+
+Printing the Sharpe Ratio:
+
+The calculated Sharpe ratio is printed using the **'print'** function and the formatted string **'Portfolio had a Sharpe ratio of {:.2f} '**.
+
+Calculating the Annualized Sharpe Ratio:
+
+The annualized Sharpe ratio is calculated by multiplying the Sharpe ratio with the square root of the number of periods.
+The number of periods is obtained by taking the length of the **'new_df_comp'** DataFrame using **'len(new_df_comp)'** and raising it to the power of 1/2.
+The result is stored in the variable **'A_SR'**.
+
+Printing the Annualized Sharpe Ratio:
+
+The calculated annualized Sharpe ratio is printed using the **'print'** function and the formatted string **'Portfolio had an annualized Sharpe ratio of {:.2f} '**.
+The code calculates the Sharpe ratio for the specified portfolio over the specified period and displays both the standard Sharpe ratio and the annualized Sharpe ratio.
 
 
 ```python 
-
+new_df_comp.query("Date == min").loc[:, ['Date', 'EEM_pos_value', 'GLD_pos_value', 'SPY_pos_value', 'TLT_pos_value', 'VGK_pos_value', 'SUM_all_pos_value']].to_csv('SummarAlocations.csv', index=False)
 ```
 
-
+The resulting CSV file will contain the summarized rebalancing dates and the corresponding allocations for each asset in the portfolio.
 
 
 
