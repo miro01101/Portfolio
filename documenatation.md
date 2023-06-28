@@ -129,6 +129,198 @@ This section of code performs the unpivoting operation on the df_mthly_pivot Dat
 This code segment transforms the **df_mthly_pivot** DataFrame into a more structured format by unpivoting it. It then filters the data to include only the specified ETFs and performs column name modifications. The resulting DataFrame, **df_mthly_unpivot**, provides a more concise representation of the ETF weights.
 
 
+## DataFrame Merging
+
+```python 
+df['Title'] = df['Title'].astype(str)
+df_mthly_unpivot['Title'] = df_mthly_unpivot['Title'].astype(str)
+
+df_comp = pd.merge(df.reset_index(), df_mthly_unpivot.reset_index(), how='left', 
+                   left_on=[df.reset_index()['Date'].dt.year, df.reset_index()['Date'].dt.month, 'Title'], 
+                   right_on=['Year', 'Month', 'Title'])
+```
+
+This section of code performs a merge operation between two DataFrames, **df** and **df_mthly_unpivot**, based on specific columns. Before merging, the code also converts the **'Title'** columns of both DataFrames to the string data type.
+
+- The **'Title'** column of df is converted to the string data type using the **astype()** function.
+- Similarly, the **'Title'** column of **df_mthly_unpivot** is also converted to the string data type.
+
+The **pd.merge()** function is then called to merge the two DataFrames based on specified columns and the specified merge type (how=**'left'**). Here's a breakdown of the merge arguments:
+
+- **df.reset_index()** is used to reset the index of df and create a temporary DataFrame with the reset index values.
+- **df.reset_index()['Date'].dt.year** extracts the year component from the **'Date'** column of the temporary DataFrame.
+- **df.reset_index()['Date'].dt.month** extracts the month component from the **'Date'** column of the temporary DataFrame.
+- **'Title'** is included as the third column in the left_on argument, representing the column from **df**.
+- **'Year'** and **'Month'** are included as the first two columns in the right_on argument, representing the columns from **df_mthly_unpivot**.
+
+The resulting merged DataFrame is stored in **df_comp**, which combines the data from df and **df_mthly_unpivot** based on matching values in the specified columns.
+
+```python
+df_comp['Date'] = pd.to_datetime(df_comp['Date'])
+df_comp['Year'] = df_comp['Date'].dt.year
+df_comp['Month'] = df_comp['Date'].dt.month
+
+min_max_dates = df_comp.groupby(['Year', 'Month'])['Date'].agg([min, max]).reset_index()
+
+df_comp = pd.merge(df_comp, min_max_dates, on=['Year', 'Month'], how='left')
+```
+
+This section of code performs various operations on the DataFrame df_comp to manipulate its columns and merge it with the min_max_dates DataFrame.
+
+**df_comp['Date'] = pd.to_datetime(df_comp['Date'])** converts the **'Date'** column of **df_comp** to the datetime data type using the **pd.to_datetime()** function. This ensures that the column is interpreted as dates.
+
+**df_comp['Year'] = df_comp['Date'].dt.year** extracts the year component from the **'Date'** column of df_comp using the **.dt.year** attribute of the datetime data type. The extracted year values are assigned to a new column **'Year'** in **df_comp**.
+
+**df_comp['Month'] = df_comp['Date'].dt.month** extracts the month component from the **'Date'** column of df_comp using the **.dt.month** attribute of the datetime data type. The extracted month values are assigned to a new column **'Month'** in **df_comp**.
+
+**min_max_dates = df_comp.groupby(['Year', 'Month'])['Date'].agg([min, max]).reset_index()** groups the rows of **df_comp** based on the **'Year'** and **'Month'** columns and applies the **.agg([min, max])** function to the **'Date'** column. This calculates the minimum and maximum dates within each group. The resulting DataFrame **min_max_dates** contains three columns: **'Year'**, **'Month'**, and two additional columns **'min'** and **'max'** representing the minimum and maximum dates, respectively.
+
+**df_comp = pd.merge(df_comp, min_max_dates, on=['Year', 'Month'], how='left')** merges df_comp with **min_max_dates** based on the **'Year'** and **'Month'** columns. The merge is performed using a left join (**how='left'**), meaning that all rows from **df_comp** are retained even if there is no corresponding match in min_max_dates. The merged DataFrame is assigned back to **df_comp**.
+
+The resulting **df_comp** DataFrame contains the original columns along with the added **'Year'**, **'Month'**, **'min'**, and **'max'** columns, which provide information about the minimum and maximum dates within each year and month.
+
+
+```python 
+result = df_comp.pivot(index=['Date', 'Year', 'Month'], columns='Title', values=['RDaily', 'W'])
+
+result.columns = ['{}_{}'.format(col[1], col[0]) for col in result.columns]
+
+result = result.reset_index()
+
+new_df_comp = pd.concat([df_comp[['Date', 'Year','Month','min','max', ]], result], axis=1)
+
+new_df_comp = new_df_comp[new_df_comp['EEM_W'].notna()]
+```
+
+This section of code performs operations on the DataFrame df_comp to pivot it, rename columns, concatenate it with another DataFrame, and filter rows based on a condition.
+
+- **result = df_comp.pivot(index=['Date', 'Year', 'Month'], columns='Title', values=['RDaily', 'W'])** pivots the **df_comp** DataFrame using the **pivot()** method. The index is set as **['Date', 'Year', 'Month']**, the columns to pivot are **'Title'**, and the values to populate the pivoted columns are **['RDaily', 'W']**. The resulting DataFrame is assigned to result.
+
+- **result.columns = ['{}_{}'.format(col[1], col[0]) for col in result.columns]** renames the columns of result using a list comprehension. Each column name is formatted as **'{value}_{column_name}'** where value corresponds to the second level of the original column multi-index and column_name corresponds to the first level. The modified column names are assigned back to result.columns.
+
+- **result = result.reset_index()** resets the index of result to turn the pivot index levels into columns.
+
+- **new_df_comp = pd.concat([df_comp[['Date', 'Year', 'Month', 'min', 'max']], result], axis=1)** concatenates the columns **'Date', 'Year', 'Month', 'min'**, and **'max'** from df_comp with the result DataFrame. The concatenation is performed along axis=1, meaning the columns are added side by side. The concatenated DataFrame is assigned to **new_df_comp**.
+
+- **new_df_comp = new_df_comp[new_df_comp['EEM_W'].notna()]** filters the rows of **new_df_comp** based on the condition **new_df_comp['EEM_W'].notna()**. This condition checks for non-null values in the **'EEM_W'** column. The resulting DataFrame is assigned back to **new_df_comp**.
+
+The resulting **new_df_comp** DataFrame contains the original columns from df_comp along with the pivoted columns from result. Rows are filtered to remove any rows where the **'EEM_W'** column has a null value.
+
+
+```python 
+def remove_dup_columns(frame):
+     keep_names = set() # Set to store unique column names
+     keep_icols = list() # List to store indices of columns to keep
+     for icol, name in enumerate(frame.columns):
+          if name not in keep_names: # If the column name is not already present in keep_names
+               keep_names.add(name) # Add the column name to keep_names
+               keep_icols.append(icol) # Add the index of the column to keep_icols
+     return frame.iloc[:, keep_icols] # Return the DataFrame with only the columns to keep
+
+new_df_comp = remove_dup_columns(new_df_comp)]
+```
+
+This code defines a function called **remove_dup_columns** that takes a DataFrame frame as input and removes duplicate columns, keeping only the unique ones.
+
+The function initializes an empty set **keep_names** to store unique column names and an empty list **keep_icols** to store the indices of the columns to keep. It then iterates over the columns of the input DataFrame using **enumerate(frame.columns)**. For each column, it checks if the column name is already present in **keep_names** using the name not in **keep_names** condition. If the column name is not present, it adds the name to **keep_names** using **keep_names.add(name)** and appends the column index icol to **keep_icols** using **keep_icols.append(icol)**.
+
+Finally, the function returns the subset of the input DataFrame frame using **.iloc[:, keep_icols]**, which selects all rows and only the columns with indices present in **keep_icols**.
+
+The returned DataFrame is assigned to **new_df_comp**, effectively removing duplicate columns from it.
+
+
+```python 
+new_df_comp['CHECK'] = 'check'
+
+new_df_comp['EEM_pos_value'] = 1
+new_df_comp['GLD_pos_value'] = 1
+new_df_comp['SPY_pos_value'] = 1
+new_df_comp['TLT_pos_value'] = 1
+new_df_comp['VGK_pos_value'] = 1
+
+new_df_comp['SUM_all_pos_value'] = 1
+
+initial_capital = 100
+```
+
+This code snippet adds new columns to the DataFrame new_df_comp and assigns specific values to each column.
+
+The first line adds a new column called **'CHECK'** to the DataFrame and assigns the value **'check'** to all rows.
+
+The subsequent lines add new columns **'EEM_pos_value'**, **'GLD_pos_value'**, **'SPY_pos_value'**, **'TLT_pos_value'**, and **'VGK_pos_value'** to the DataFrame. All these columns are assigned the value **1** for all rows.
+
+Finally, another new column **'SUM_all_pos_value'** is added to the DataFrame, and it is assigned the value **1** for all rows.
+
+
+```python 
+# Loop through the rows of the DataFrame 'new_df_comp', starting from index 1
+for i in range(1, len(new_df_comp)):
+    # Check if we are at the beginning of a month in the first year
+    if ((new_df_comp.loc[i, 'Date'] == new_df_comp.loc[i, 'min']) & (new_df_comp.loc[i, 'Date'].year == np.sort(new_df_comp['Date'].dt.year.unique())[0]) & (new_df_comp.loc[i, 'Date'].month ==  np.sort(new_df_comp.loc[(new_df_comp['Date'].dt.year == np.sort(new_df_comp['Date'].dt.year.unique())[0])]['Date'].dt.month.unique())[1])): # ak sme na zaciatku mesiaca >>> tuna chceme rebalancovat ak sme na zaciatku druheho mesiaca prveho roku >>>tu rebalancujeme startovaci kapital 100 usd
+        # Update position values based on initial capital and daily returns
+        new_df_comp.loc[i, 'EEM_pos_value'] = initial_capital*new_df_comp.loc[i, 'EEM_W']*(1+new_df_comp.loc[i, 'EEM_RDaily'])
+        new_df_comp.loc[i, 'GLD_pos_value'] = initial_capital*new_df_comp.loc[i, 'GLD_W']*(1+new_df_comp.loc[i, 'GLD_RDaily'])
+        new_df_comp.loc[i, 'SPY_pos_value'] = initial_capital*new_df_comp.loc[i, 'SPY_W']*(1+new_df_comp.loc[i, 'SPY_RDaily'])
+        new_df_comp.loc[i, 'TLT_pos_value'] = initial_capital*new_df_comp.loc[i, 'TLT_W']*(1+new_df_comp.loc[i, 'TLT_RDaily'])
+        new_df_comp.loc[i, 'VGK_pos_value'] = initial_capital*new_df_comp.loc[i, 'VGK_W']*(1+new_df_comp.loc[i, 'VGK_RDaily'])
+        
+        # Update the 'CHECK' column with a specific label
+        new_df_comp.loc[i, 'CHECK']  = 'First year Second month start'
+
+        # Calculate the sum of all position values
+        new_df_comp.loc[i, 'SUM_all_pos_value'] = new_df_comp.loc[i, 'EEM_pos_value']+new_df_comp.loc[i, 'GLD_pos_value']+new_df_comp.loc[i, 'SPY_pos_value']+new_df_comp.loc[i, 'TLT_pos_value']+new_df_comp.loc[i, 'VGK_pos_value']
+
+    # Check if we are at the beginning of a month
+    elif ((new_df_comp.loc[i, 'Date'] == new_df_comp.loc[i, 'min'])):
+        new_df_comp.loc[i, 'EEM_pos_value'] = new_df_comp.loc[i-1, 'SUM_all_pos_value']*new_df_comp.loc[i, 'EEM_W']*(1+new_df_comp.loc[i, 'EEM_RDaily'])
+        new_df_comp.loc[i, 'GLD_pos_value'] = new_df_comp.loc[i-1, 'SUM_all_pos_value']*new_df_comp.loc[i, 'GLD_W']*(1+new_df_comp.loc[i, 'GLD_RDaily'])
+        new_df_comp.loc[i, 'SPY_pos_value'] = new_df_comp.loc[i-1, 'SUM_all_pos_value']*new_df_comp.loc[i, 'SPY_W']*(1+new_df_comp.loc[i, 'SPY_RDaily'])
+        new_df_comp.loc[i, 'TLT_pos_value'] = new_df_comp.loc[i-1, 'SUM_all_pos_value']*new_df_comp.loc[i, 'TLT_W']*(1+new_df_comp.loc[i, 'TLT_RDaily'])
+        new_df_comp.loc[i, 'VGK_pos_value'] = new_df_comp.loc[i-1, 'SUM_all_pos_value']*new_df_comp.loc[i, 'VGK_W']*(1+new_df_comp.loc[i, 'VGK_RDaily'])
+
+        new_df_comp.loc[i, 'CHECK']  = 'Start of month'
+
+        new_df_comp.loc[i, 'SUM_all_pos_value'] = new_df_comp.loc[i, 'EEM_pos_value']+new_df_comp.loc[i, 'GLD_pos_value']+new_df_comp.loc[i, 'SPY_pos_value']+new_df_comp.loc[i, 'TLT_pos_value']+new_df_comp.loc[i, 'VGK_pos_value']
+
+    else:
+        new_df_comp.loc[i, 'EEM_pos_value'] = new_df_comp.loc[i-1, 'EEM_pos_value']*(1+new_df_comp.loc[i, 'EEM_RDaily'])
+        new_df_comp.loc[i, 'GLD_pos_value'] = new_df_comp.loc[i-1, 'GLD_pos_value']*(1+new_df_comp.loc[i, 'GLD_RDaily'])
+        new_df_comp.loc[i, 'SPY_pos_value'] = new_df_comp.loc[i-1, 'SPY_pos_value']*(1+new_df_comp.loc[i, 'SPY_RDaily'])
+        new_df_comp.loc[i, 'TLT_pos_value'] = new_df_comp.loc[i-1, 'TLT_pos_value']*(1+new_df_comp.loc[i, 'TLT_RDaily'])
+        new_df_comp.loc[i, 'VGK_pos_value'] = new_df_comp.loc[i-1, 'VGK_pos_value']*(1+new_df_comp.loc[i, 'VGK_RDaily'])
+
+        new_df_comp.loc[i, 'CHECK']  = '*-*-*-*-*-*-*-*-*-*'
+
+        new_df_comp.loc[i, 'SUM_all_pos_value'] = new_df_comp.loc[i, 'EEM_pos_value']+new_df_comp.loc[i, 'GLD_pos_value']+new_df_comp.loc[i, 'SPY_pos_value']+new_df_comp.loc[i, 'TLT_pos_value']+new_df_comp.loc[i, 'VGK_pos_value']
+```
+
+This code snippet implements a loop that iterates through the rows of the DataFrame **new_df_comp** and performs calculations to update position values based on specific conditions.
+
+Loop Initialization:
+
+The loop starts from index **1** and iterates through each row of **new_df_comp** using the range function.
+
+First Year Second Month Start:
+
+The code checks if the current row represents the beginning of a month in the first year. This is determined by comparing the Date column with the minimum date value and checking if it matches the first year's second month.
+If the condition is satisfied, the position values (**EEM_pos_value**, **GLD_pos_value**, **SPY_pos_value**, **TLT_pos_value**, and **VGK_pos_value**) are updated based on the initial capital and daily returns.
+The **CHECK** column is updated with the label **'First year Second month start'**.
+The sum of all position values (**SUM_all_pos_value**) is calculated.
+
+Start of Month:
+
+If the previous condition is not met, the code checks if the current row represents the beginning of a month.
+If true, the position values are updated based on the previous row's sum of all position values multiplied by the respective weights and daily returns.
+The **CHECK** column is updated with the label **'Start of month'**.
+The sum of all position values is calculated.
+
+Regular Update:
+
+If neither of the previous conditions is met, the code updates the position values by multiplying the previous row's position value with the respective daily return.
+The **CHECK** column is updated with the label **'*-*-*-*-*-*-*-*-*-*'**.
+
+The sum of all position values is calculated.
+The loop iterates through the rows of the DataFrame and updates the position values and the **CHECK** column based on different conditions. The result is an updated DataFrame with the modified position values and corresponding labels in the **CHECK** column.
 
 
 
@@ -139,18 +331,9 @@ This code segment transforms the **df_mthly_pivot** DataFrame into a more struct
 
 
 
-
-
-
 ```python 
 
 ```
-
-
-
-
-
-
 
 
 
@@ -162,18 +345,9 @@ This code segment transforms the **df_mthly_pivot** DataFrame into a more struct
 
 
 
-
-
-
-
-
 ```python 
 
 ```
-
-
-
-
 
 
 
